@@ -20,7 +20,9 @@
     </properties>
 
     <modules>
+        <module>gmy-boot-starter-base</module>
         <module>gmy-boot-starter-cache</module>
+        <module>gmy-boot-starter-limiter</module>
     </modules>
 
     <dependencies>
@@ -44,6 +46,12 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.14.0</version>
         </dependency>
     </dependencies>
 

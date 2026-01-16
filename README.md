@@ -8,7 +8,8 @@
 
 ```
 gmy-spring-boot-starters/
-├── gmy-boot-starter-cache/       # 缓存模块
+├── gmy-boot-starter-base/         # 基础模块
+├── gmy-boot-starter-cache/        # 缓存模块
 ├── pom.xml                        # 父项目 POM 文件
 ├── README.md                      # 项目文档
 └── LICENSE                        # 许可证文件
@@ -16,10 +17,10 @@ gmy-spring-boot-starters/
 
 ## 模块列表
 
-| 模块名称 | 描述 | 状态 |
-|---------|------|------|
-| gmy-boot-starter-cache | 缓存模块，集成 Redis、Caffeine 和 JetCache | 已完成 |
-| 更多模块 | 敬请期待... | 规划中 |
+| 模块名称               | 描述                                           | 状态   |
+| ---------------------- | ---------------------------------------------- | ------ |
+| gmy-boot-starter-base  | 基础模块，提供通用工具类、响应模板、异常处理等 | 已完成 |
+| gmy-boot-starter-cache | 缓存模块，集成 Redis、Caffeine 和 JetCache     | 已完成 |
 
 ## 快速开始
 
@@ -46,7 +47,85 @@ mvn clean install
 
 ### 使用方法
 
-#### 1. 缓存模块 (gmy-boot-starter-cache)
+#### 1. 基础模块 (gmy-boot-starter-base)
+
+**添加依赖**
+
+```xml
+<dependency>
+    <groupId>io.github.gaomingyuan666</groupId>
+    <artifactId>gmy-boot-starter-base</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+**核心功能**
+
+- **响应模板**：提供统一的响应格式
+
+  ```java
+  return new BaseResponse(ResponseCode.SUCCESS, data);
+  return new BaseResponse(ResponseCode.FAIL, "错误信息");
+  ```
+
+- **异常处理**：提供统一的异常体系
+
+  ```java
+  throw new BizException("业务错误");
+  throw new SystemException("系统错误");
+  throw new RemoteCallException("远程调用错误");
+  ```
+
+- **工具类**：提供各种通用工具类
+
+  ```java
+  // 获取Spring Bean
+  UserService userService = SpringContextHolder.getBean(UserService.class);
+
+  // 断言工具
+  AssertUtil.isTrue(condition, "条件不满足");
+
+  // Bean验证工具
+  BeanValidator.validate(request);
+
+  // SpEL表达式工具
+  String value = SpElUtils.parseExpression(expression, context);
+  ```
+
+- **请求模板**：提供统一的请求格式
+
+  ```java
+  public class UserRequest extends BaseRequest {
+      private String username;
+      private String password;
+      // getter 和 setter
+  }
+
+  public class IdRequest extends BaseRequest {
+      private Long id;
+      // getter 和 setter
+  }
+  ```
+
+- **状态机**：提供基础状态机实现
+
+  ```java
+  // 继承BaseStateMachine实现自定义状态机
+  public class OrderStateMachine extends BaseStateMachine<OrderState, OrderEvent> {
+      // 实现状态转换逻辑
+  }
+  ```
+
+- **验证器**：提供自定义验证注解
+  ```java
+  public class UserRequest {
+      @IsMobile
+      private String mobile;
+      // getter 和 setter
+  }
+  ```
+
+#### 2. 缓存模块 (gmy-boot-starter-cache)
 
 **添加依赖**
 
@@ -69,7 +148,7 @@ spring:
   redis:
     host: localhost
     port: 6379
-    password: 
+    password:
     database: 0
 ```
 
@@ -112,16 +191,36 @@ public User getUserById(Long id) {
 
 ## 配置选项
 
+### 基础模块配置
+
+| 配置项                         | 描述                         | 默认值 |
+| ------------------------------ | ---------------------------- | ------ |
+| gmy.base.enabled               | 是否启用基础模块             | true   |
+| gmy.base.spring-context-holder | 是否启用 Spring 上下文持有器 | true   |
+
 ### 缓存模块配置
 
-| 配置项 | 描述 | 默认值 |
-|-------|------|-------|
-| spring.redis.host | Redis 服务器地址 | localhost |
-| spring.redis.port | Redis 服务器端口 | 6379 |
-| spring.redis.password | Redis 服务器密码 | 空 |
-| spring.redis.database | Redis 数据库索引 | 0 |
+| 配置项                | 描述             | 默认值    |
+| --------------------- | ---------------- | --------- |
+| spring.redis.host     | Redis 服务器地址 | localhost |
+| spring.redis.port     | Redis 服务器端口 | 6379      |
+| spring.redis.password | Redis 服务器密码 | 空        |
+| spring.redis.database | Redis 数据库索引 | 0         |
 
 ## 项目架构
+
+### 基础模块架构
+
+- **config**: 配置类，包括基础配置和配置属性
+- **constant**: 常量类，定义通用常量，如环境配置常量
+- **exception**: 异常类，提供统一的异常体系，包括业务异常、系统异常等
+- **model**: 模型类，包括模板类
+- **request**: 请求类，提供统一的请求格式，如基础请求、ID 请求
+- **response**: 响应类，提供统一的响应格式和响应码
+- **service**: 服务类，提供基础服务接口
+- **statemachine**: 状态机，提供基础状态机实现
+- **utils**: 工具类，提供各种通用工具，如 Spring 上下文持有器、断言工具等
+- **validator**: 验证器，提供自定义验证注解，如手机号验证
 
 ### 缓存模块架构
 
