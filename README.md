@@ -1,8 +1,25 @@
 # gmy-spring-boot-starters
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Java Version](https://img.shields.io/badge/java-17%2B-blue.svg)](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)
+[![Spring Boot Version](https://img.shields.io/badge/spring--boot-3.2%2B-green.svg)](https://spring.io/projects/spring-boot)
 
 一系列可重复使用的 Spring Boot 开发工具包，涵盖常见的基础设施组件，旨在提高开发效率和代码质量。
+
+## 功能特性
+
+- **基础模块**：提供通用工具类、统一响应模板、异常处理体系、请求验证等核心功能
+- **缓存模块**：集成 Redis、Caffeine 和 JetCache，提供本地缓存和分布式缓存的统一抽象
+- **限流模块**：支持基于注解和编程式的限流方式，实现多种限流算法
+- **自动配置**：基于 Spring Boot 的自动配置机制，开箱即用
+- **可扩展设计**：提供丰富的扩展点，支持自定义实现
+
+## 典型使用场景
+
+1. **快速搭建 RESTful API**：使用基础模块的响应模板和异常处理，快速构建标准化的 API 接口
+2. **缓存优化**：通过缓存模块的统一抽象，轻松实现多级缓存策略，提高系统性能
+3. **保护系统稳定性**：使用限流模块防止恶意请求和突发流量，保障系统稳定运行
+4. **微服务架构**：在微服务环境中，提供统一的基础设施组件，确保服务间的一致性
 
 ## 项目结构
 
@@ -10,6 +27,7 @@
 gmy-spring-boot-starters/
 ├── gmy-boot-starter-base/         # 基础模块
 ├── gmy-boot-starter-cache/        # 缓存模块
+├── gmy-boot-starter-limiter/      # 限流模块
 ├── pom.xml                        # 父项目 POM 文件
 ├── README.md                      # 项目文档
 └── LICENSE                        # 许可证文件
@@ -17,10 +35,11 @@ gmy-spring-boot-starters/
 
 ## 模块列表
 
-| 模块名称               | 描述                                           | 状态   |
-| ---------------------- | ---------------------------------------------- | ------ |
-| gmy-boot-starter-base  | 基础模块，提供通用工具类、响应模板、异常处理等 | 已完成 |
-| gmy-boot-starter-cache | 缓存模块，集成 Redis、Caffeine 和 JetCache     | 已完成 |
+| 模块名称                 | 描述                                           | 状态   |
+| ------------------------ | ---------------------------------------------- | ------ |
+| gmy-boot-starter-base    | 基础模块，提供通用工具类、响应模板、异常处理等 | 已完成 |
+| gmy-boot-starter-cache   | 缓存模块，集成 Redis、Caffeine 和 JetCache     | 已完成 |
+| gmy-boot-starter-limiter | 限流模块，提供基于注解和编程式的限流功能       | 已完成 |
 
 ## 快速开始
 
@@ -189,14 +208,75 @@ public User getUserById(Long id) {
 }
 ```
 
+#### 3. 限流模块 (gmy-boot-starter-limiter)
+
+**添加依赖**
+
+```xml
+<dependency>
+    <groupId>io.github.gaomingyuan666</groupId>
+    <artifactId>gmy-boot-starter-limiter</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+**核心功能**
+
+- **注解式限流**：通过注解方式实现方法级别的限流
+
+  ```java
+  @FixedWindowRateLimiter(
+      target = FixedWindowRateLimiter.Target.EL,
+      spEl = "#userId",
+      time = 60,
+      count = 10
+  )
+  public String getUserInfo(Long userId) {
+      return "User info for " + userId;
+  }
+  ```
+
+- **编程式限流**：通过工具类实现更灵活的限流
+
+  ```java
+  FrequencyControlDTO dto = new FrequencyControlDTO();
+  dto.setKey("user:" + userId);
+  dto.setTime(60);
+  dto.setCount(10);
+  dto.setUnit(TimeUnit.SECONDS);
+
+  return FrequencyControlUtil.executeWithFrequencyControl(
+      LimiterTypeEnum.FixedWindow.name(),
+      dto,
+      () -> {
+          // 业务逻辑
+          return "User info for " + userId;
+      }
+  );
+  ```
+
+**使用建议**
+
+1. **自定义 IP 和 UID 获取逻辑**：实现 `LimiterTargetResolver` 接口来自定义 IP 和 UID 的获取逻辑
+
+   ```java
+   @Component
+   public class CustomLimiterTargetResolver implements LimiterTargetResolver {
+       @Override
+       public String getIp() {
+           // 从请求中获取IP地址
+           return RequestContextHolder.getRequest().getRemoteAddr();
+       }
+
+       @Override
+       public String getUid() {
+           // 从用户会话中获取用户ID
+           return UserContext.getCurrentUserId();
+       }
+   }
+   ```
+
 ## 配置选项
-
-### 基础模块配置
-
-| 配置项                         | 描述                         | 默认值 |
-| ------------------------------ | ---------------------------- | ------ |
-| gmy.base.enabled               | 是否启用基础模块             | true   |
-| gmy.base.spring-context-holder | 是否启用 Spring 上下文持有器 | true   |
 
 ### 缓存模块配置
 
@@ -228,6 +308,16 @@ public User getUserById(Long id) {
 - **constant**: 常量类，定义缓存相关的常量
 - **service**: 缓存服务类，提供本地缓存和 Redis 缓存的抽象实现
 - **utils**: 工具类，包括 Redis 操作工具和 JSON 转换工具
+
+### 限流模块架构
+
+- **aspect**: 切面类，实现注解式限流
+- **domain**: 领域模型
+  - **annotation**: 注解类，定义限流注解
+  - **dto**: 数据传输对象，定义限流配置
+  - **enums**: 枚举类，定义限流类型
+  - **service**: 服务类，实现限流逻辑
+- **service**: 服务类，提供限流策略工厂和工具类
 
 ## 贡献指南
 
