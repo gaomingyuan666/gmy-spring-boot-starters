@@ -11,6 +11,7 @@
 - **基础模块**：提供通用工具类、统一响应模板、异常处理体系、请求验证等核心功能
 - **缓存模块**：集成 Redis、Caffeine 和 JetCache，提供本地缓存和分布式缓存的统一抽象
 - **限流模块**：支持基于注解和编程式的限流方式，实现多种限流算法
+- **数据源模块**：支持多数据源配置和读写分离，提供统一的数据源管理抽象
 - **自动配置**：基于 Spring Boot 的自动配置机制，开箱即用
 - **可扩展设计**：提供丰富的扩展点，支持自定义实现
 
@@ -27,6 +28,7 @@
 gmy-spring-boot-starters/
 ├── gmy-boot-starter-base/         # 基础模块
 ├── gmy-boot-starter-cache/        # 缓存模块
+├── gmy-boot-starter-datasource/   # 数据源模块
 ├── gmy-boot-starter-limiter/      # 限流模块
 ├── pom.xml                        # 父项目 POM 文件
 ├── README.md                      # 项目文档
@@ -35,11 +37,12 @@ gmy-spring-boot-starters/
 
 ## 模块列表
 
-| 模块名称                 | 描述                                           | 状态   |
-| ------------------------ | ---------------------------------------------- | ------ |
-| gmy-boot-starter-base    | 基础模块，提供通用工具类、响应模板、异常处理等 | 已完成 |
-| gmy-boot-starter-cache   | 缓存模块，集成 Redis、Caffeine 和 JetCache     | 已完成 |
-| gmy-boot-starter-limiter | 限流模块，提供基于注解和编程式的限流功能       | 已完成 |
+| 模块名称                    | 描述                                                      | 状态   |
+| --------------------------- | --------------------------------------------------------- | ------ |
+| gmy-boot-starter-base       | 基础模块，提供通用工具类、响应模板、异常处理等            | 已完成 |
+| gmy-boot-starter-cache      | 缓存模块，集成 Redis、Caffeine 和 JetCache                | 已完成 |
+| gmy-boot-starter-datasource | 数据源模块 集成mybatis-helper，支持多数据源配置和读写分离 | 已完成 |
+| gmy-boot-starter-limiter    | 限流模块，提供基于注解和编程式的限流功能                  | 已完成 |
 
 ## 快速开始
 
@@ -276,6 +279,169 @@ public User getUserById(Long id) {
    }
    ```
 
+#### 4. 数据源模块 (gmy-boot-starter-datasource)
+
+**添加依赖**
+
+```xml
+<dependency>
+    <groupId>io.github.gaomingyuan666</groupId>
+    <artifactId>gmy-boot-starter-datasource</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+**配置示例**
+
+在 `application.yml` 或 `application.properties` 文件中配置数据源信息：
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      connection-test-query: SELECT 1
+      db1:
+        write:
+          jdbcUrl: "jdbc:mysql://localhost:3306/test?allowMultiQueries=true&useUnicode=true&useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+          username: "root"
+          password: "root"
+        read:
+          jdbcUrl: "jdbc:mysql://localhost:3306/test?allowMultiQueries=true&useUnicode=true&useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+          username: "read"
+          password: "read"
+      db2:
+        jdbcUrl: "jdbc:mysql://localhost:3306/test1?allowMultiQueries=true&useUnicode=true&useSSL=false&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai"
+        username: "root"
+        password: "root"
+```
+
+**使用方法**
+
+1. **配置多数据源**
+
+   创建数据源配置类，继承 `AbstractDatasourceConfig` 类：
+
+   ```java
+   public class MultiDatasourceConfig {
+
+       // 读写分离数据源配置
+       @Configuration
+       @MapperScan(
+               basePackages = "com.example.mapper.db1",
+               sqlSessionTemplateRef = "db1SqlSessionTemplate"
+       )
+       public static class Db1Config extends AbstractDatasourceConfig {
+
+           @Override
+           protected String getMapperPackage() {
+               return "com.example.mapper.db1";
+           }
+
+           @Override
+           protected String getMapperLocation() {
+               return "classpath*:mybatis/mapper/db1/*.xml";
+           }
+
+           @Bean
+           @ConfigurationProperties("spring.datasource.hikari.db1.write")
+           public DataSource initWriteDataSource() {
+               return new HikariDataSource();
+           }
+
+           @Bean
+           @ConfigurationProperties("spring.datasource.hikari.db1.read")
+           public DataSource initReadDataSource() {
+               return new HikariDataSource();
+           }
+
+           @Bean
+           public DynamicRoutingDataSource db1DynamicRoutingDataSource() {
+               return buildDynamicRoutingDataSource(initWriteDataSource(), initReadDataSource());
+           }
+
+           @Bean
+           public SqlSessionFactory db1SqlSessionFactory() throws Exception {
+               return buildReadWriteSqlSessionFactory(initWriteDataSource(), initReadDataSource());
+           }
+
+           @Bean
+           public SqlSessionTemplate db1SqlSessionTemplate() throws Exception {
+               return buildSqlSessionTemplate(db1SqlSessionFactory());
+           }
+
+           @Bean
+           public DataSourceTransactionManager db1TransactionManager() {
+               return buildTransactionManager(db1DynamicRoutingDataSource());
+           }
+       }
+
+       // 单数据源配置
+       @Configuration
+       @MapperScan(
+               basePackages = "com.example.mapper.db2",
+               sqlSessionTemplateRef = "db2SqlSessionTemplate"
+       )
+       public static class Db2Config extends AbstractDatasourceConfig {
+
+           @Override
+           protected String getMapperPackage() {
+               return "com.example.mapper.db2";
+           }
+
+           @Override
+           protected String getMapperLocation() {
+               return "classpath*:mybatis/mapper/db2/*.xml";
+           }
+
+           @Bean
+           @ConfigurationProperties("spring.datasource.hikari.db2")
+           public DataSource db2DataSource() {
+               return new HikariDataSource();
+           }
+
+           @Bean
+           public SqlSessionFactory db2SqlSessionFactory(@Qualifier("db2DataSource") DataSource dataSource) throws Exception {
+               return buildSqlSessionFactory(dataSource);
+           }
+
+           @Bean
+           public SqlSessionTemplate db2SqlSessionTemplate(@Qualifier("db2SqlSessionFactory") SqlSessionFactory factory) {
+               return buildSqlSessionTemplate(factory);
+           }
+
+           @Bean
+           public DataSourceTransactionManager db2TransactionManager(@Qualifier("db2DataSource") DataSource dataSource) {
+               return buildTransactionManager(dataSource);
+           }
+       }
+   }
+   ```
+
+2. **使用数据源**
+   在业务代码中使用`DynamicRoutingDataSource.setDataSource()` 方法动态切换数据源：
+
+   ```java
+   // 动态切换数据源
+   public void updateUser(User user) {
+       try {
+           // 切换到写数据源
+           DynamicRoutingDataSource.setDataSource(DataSourceType.WRITE);
+           userMapper.updateById(user);
+       } finally {
+           // 清空数据源上下文
+           DynamicRoutingDataSource.clearDataSource();
+       }
+   }
+   ```
+
+**核心功能**
+
+- **多数据源支持**：轻松配置多个数据源，适用于复杂业务场景
+- **读写分离**：支持主从架构，实现读写分离，提高系统性能
+- **统一抽象**：提供统一的数据源配置抽象，减少重复代码
+- **灵活扩展**：支持自定义数据源配置和切换策略
+
+
 ## 配置选项
 
 ### 缓存模块配置
@@ -318,6 +484,16 @@ public User getUserById(Long id) {
   - **enums**: 枚举类，定义限流类型
   - **service**: 服务类，实现限流逻辑
 - **service**: 服务类，提供限流策略工厂和工具类
+
+### 数据源模块架构
+
+- **config**: 配置类，包括抽象数据源配置、动态路由数据源和示例配置
+  - **AbstractDatasourceConfig**: 数据源配置抽象基类，提供通用的数据源配置方法
+  - **DynamicRoutingDataSource**: 动态路由数据源，实现读写分离
+  - **MultiDatasourceExampleConfig**: 多数据源配置示例
+  - **MyBatisHelperConfig**: mybatis-helper 辅助配置
+- **constants**: 常量类，定义数据源类型枚举
+  - **DataSourceType**: 数据源类型枚举，包括 READ 和 WRITE
 
 ## 贡献指南
 

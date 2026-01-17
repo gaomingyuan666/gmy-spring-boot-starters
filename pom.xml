@@ -22,6 +22,7 @@
     <modules>
         <module>gmy-boot-starter-base</module>
         <module>gmy-boot-starter-cache</module>
+        <module>gmy-boot-starter-datasource</module>
         <module>gmy-boot-starter-limiter</module>
     </modules>
 
