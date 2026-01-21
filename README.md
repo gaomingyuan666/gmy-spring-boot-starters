@@ -32,6 +32,7 @@ gmy-spring-boot-starters/
 ├── gmy-boot-starter-datasource/   # 数据源模块
 ├── gmy-boot-starter-limiter/      # 限流模块
 ├── gmy-boot-starter-lock/         # 分布式锁模块
+├── gmy-boot-starter-web/          # Web模块
 ├── pom.xml                        # 父项目 POM 文件
 ├── README.md                      # 项目文档
 └── LICENSE                        # 许可证文件
@@ -46,6 +47,7 @@ gmy-spring-boot-starters/
 | gmy-boot-starter-lock       | 分布式锁模块，提供基于 Redis 的分布式锁实现               | 已完成 |
 | gmy-boot-starter-datasource | 数据源模块 集成mybatis-helper，支持多数据源配置和读写分离 | 已完成 |
 | gmy-boot-starter-limiter    | 限流模块，提供基于注解和编程式的限流功能                  | 已完成 |
+| gmy-boot-starter-web        | Web模块，提供全局异常处理和通用鉴权框架                   | 已完成 |
 
 ## 快速开始
 
@@ -475,6 +477,163 @@ spring:
 - **读写分离**：支持主从架构，实现读写分离，提高系统性能
 - **统一抽象**：提供统一的数据源配置抽象，减少重复代码
 - **灵活扩展**：支持自定义数据源配置和切换策略
+
+#### 6. Web模块 (gmy-boot-starter-web)
+
+**添加依赖**
+
+```xml
+<dependency>
+    <groupId>io.github.gaomingyuan666</groupId>
+    <artifactId>gmy-boot-starter-web</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+**核心功能**
+
+- **全局异常处理**：提供统一的异常处理机制，自动处理各种异常情况
+- **通用鉴权框架**：提供可扩展的鉴权过滤器接口，支持自定义鉴权逻辑
+- **自动配置**：基于 Spring Boot 的自动配置机制，开箱即用
+
+**使用方法**
+
+1. **使用默认实现**
+
+   无需任何配置，Web模块会自动配置以下功能：
+   - 全局异常处理
+   - 默认鉴权过滤器（不做任何实际鉴权，所有请求都通过）
+
+2. **自定义鉴权实现**
+
+   实现 `AuthFilter` 接口来自定义鉴权逻辑：
+
+   ```java
+   @Component
+   public class CustomAuthFilter implements AuthFilter {
+
+       @Override
+       public String getAuthInfo(HttpServletRequest request) {
+           // 从请求头中获取token
+           return request.getHeader("Authorization");
+       }
+
+       @Override
+       public boolean validateAuthInfo(String authInfo) {
+           // 验证token的有效性
+           if (authInfo == null || authInfo.isEmpty()) {
+               return false;
+           }
+           // 这里可以实现具体的token验证逻辑，如解析JWT、查询Redis等
+           return true;
+       }
+
+       @Override
+       public void handleAuthFailure(HttpServletRequest request, HttpServletResponse response, String message) {
+           try {
+               response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+               response.setContentType("application/json");
+               response.getWriter().write("{\"code\": 401, \"message\": \"" + message + "\"}");
+           } catch (IOException e) {
+               e.printStackTrace();
+           }
+       }
+
+       @Override
+       public void handleAuthSuccess(HttpServletRequest request, HttpServletResponse response, String authInfo) {
+           // 可以将认证信息存储到线程上下文中，供后续处理使用
+           // 例如：UserContext.setCurrentUser(...)
+       }
+
+       @Override
+       public boolean shouldAuthenticate(HttpServletRequest request) {
+           // 可以根据请求路径判断是否需要鉴权
+           String path = request.getRequestURI();
+           return !path.startsWith("/public") && !path.equals("/login");
+       }
+
+       @Override
+       public void init(FilterConfig filterConfig) throws ServletException {
+           // 初始化逻辑
+       }
+
+       @Override
+       public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+           HttpServletRequest httpRequest = (HttpServletRequest) request;
+           HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+           // 检查是否需要鉴权
+           if (shouldAuthenticate(httpRequest)) {
+               // 获取认证信息
+               String authInfo = getAuthInfo(httpRequest);
+
+               // 验证认证信息
+               if (!validateAuthInfo(authInfo)) {
+                   // 处理认证失败
+                   handleAuthFailure(httpRequest, httpResponse, "Invalid or expired token");
+                   return;
+               }
+
+               // 处理认证成功
+               handleAuthSuccess(httpRequest, httpResponse, authInfo);
+           }
+
+           // 继续执行过滤器链
+           chain.doFilter(request, response);
+       }
+
+       @Override
+       public void destroy() {
+           // 销毁逻辑
+       }
+   }
+   ```
+
+3. **部分覆盖默认实现**
+
+   继承 `DefaultAuthFilter` 类，只覆盖需要自定义的方法：
+
+   ```java
+   @Component
+   public class TokenAuthFilter extends DefaultAuthFilter {
+
+       @Override
+       public boolean validateAuthInfo(String authInfo) {
+           // 只覆盖验证逻辑
+           if (authInfo == null || authInfo.isEmpty()) {
+               return false;
+           }
+           // 实现具体的token验证逻辑
+           return true;
+       }
+
+       @Override
+       public boolean shouldAuthenticate(HttpServletRequest request) {
+           // 只覆盖需要鉴权的路径判断
+           String path = request.getRequestURI();
+           return path.startsWith("/api");
+       }
+   }
+   ```
+
+4. **自定义过滤器配置**
+
+   如果需要自定义过滤器的URL模式、顺序等配置，可以自定义 `FilterRegistrationBean`：
+
+   ```java
+   @Configuration
+   public class FilterConfig {
+
+       @Bean
+       public FilterRegistrationBean<AuthFilter> authFilterRegistration(AuthFilter authFilter) {
+           FilterRegistrationBean<AuthFilter> registrationBean = new FilterRegistrationBean<>();
+           registrationBean.setFilter(authFilter);
+           registrationBean.addUrlPatterns("/api/*");
+           registrationBean.setOrder(5);
+           return registrationBean;
+       }
+   }
+   ```
 
 ## 配置选项
 

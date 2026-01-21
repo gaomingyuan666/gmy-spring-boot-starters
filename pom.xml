@@ -25,6 +25,7 @@
         <module>gmy-boot-starter-datasource</module>
         <module>gmy-boot-starter-limiter</module>
         <module>gmy-boot-starter-lock</module>
+        <module>gmy-boot-starter-web</module>
     </modules>
 
     <dependencies>
