@@ -64,4 +64,16 @@
         </dependency>
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>repo-cviju</id>
+            <url>https://packages.aliyun.com/63d78d074bc27dfe875966cf/maven/repo-cviju</url>
+        </repository>
+        <snapshotRepository>
+            <id>repo-cviju</id>
+            <name>云效制品仓库</name>
+            <url>https://packages.aliyun.com/63d78d074bc27dfe875966cf/maven/repo-cviju</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>
