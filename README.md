@@ -11,6 +11,7 @@
 - **基础模块**：提供通用工具类、统一响应模板、异常处理体系、请求验证等核心功能
 - **缓存模块**：集成 Redis、Caffeine 和 JetCache，提供本地缓存和分布式缓存的统一抽象
 - **限流模块**：支持基于注解和编程式的限流方式，实现多种限流算法
+- **分布式锁模块**：提供基于 Redis 的分布式锁实现，支持注解和编程式调用
 - **数据源模块**：支持多数据源配置和读写分离，提供统一的数据源管理抽象
 - **自动配置**：基于 Spring Boot 的自动配置机制，开箱即用
 - **可扩展设计**：提供丰富的扩展点，支持自定义实现
@@ -30,6 +31,7 @@ gmy-spring-boot-starters/
 ├── gmy-boot-starter-cache/        # 缓存模块
 ├── gmy-boot-starter-datasource/   # 数据源模块
 ├── gmy-boot-starter-limiter/      # 限流模块
+├── gmy-boot-starter-lock/         # 分布式锁模块
 ├── pom.xml                        # 父项目 POM 文件
 ├── README.md                      # 项目文档
 └── LICENSE                        # 许可证文件
@@ -41,6 +43,7 @@ gmy-spring-boot-starters/
 | --------------------------- | --------------------------------------------------------- | ------ |
 | gmy-boot-starter-base       | 基础模块，提供通用工具类、响应模板、异常处理等            | 已完成 |
 | gmy-boot-starter-cache      | 缓存模块，集成 Redis、Caffeine 和 JetCache                | 已完成 |
+| gmy-boot-starter-lock       | 分布式锁模块，提供基于 Redis 的分布式锁实现               | 已完成 |
 | gmy-boot-starter-datasource | 数据源模块 集成mybatis-helper，支持多数据源配置和读写分离 | 已完成 |
 | gmy-boot-starter-limiter    | 限流模块，提供基于注解和编程式的限流功能                  | 已完成 |
 
@@ -279,7 +282,39 @@ public User getUserById(Long id) {
    }
    ```
 
-#### 4. 数据源模块 (gmy-boot-starter-datasource)
+#### 4. 分布式锁模块 (gmy-boot-starter-lock)
+
+**添加依赖**
+
+```xml
+<dependency>
+    <groupId>io.github.gaomingyuan666</groupId>
+    <artifactId>gmy-boot-starter-lock</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+</dependency>
+```
+
+**核心功能**
+
+- **注解式分布式锁**：通过注解方式实现方法级别的分布式锁
+
+  ```java
+  @RedissonLock(key = "user:" + "#userId")
+  public String getUserInfo(Long userId) {
+      return "User info for " + userId;
+  }
+  ```
+
+- **编程式分布式锁**：通过工具类实现更灵活的分布式锁
+
+  ```java
+  return lockService.executeWithLock("user:" + userId, () -> {
+      // 业务逻辑
+      return "User info for " + userId;
+  });
+  ```
+
+#### 5. 数据源模块 (gmy-boot-starter-datasource)
 
 **添加依赖**
 
@@ -441,7 +476,6 @@ spring:
 - **统一抽象**：提供统一的数据源配置抽象，减少重复代码
 - **灵活扩展**：支持自定义数据源配置和切换策略
 
-
 ## 配置选项
 
 ### 缓存模块配置
@@ -484,6 +518,13 @@ spring:
   - **enums**: 枚举类，定义限流类型
   - **service**: 服务类，实现限流逻辑
 - **service**: 服务类，提供限流策略工厂和工具类
+
+### 分布式锁模块架构
+
+- **annotation**: 注解类，定义分布式锁注解
+- **aspect**: 切面类，实现注解式分布式锁
+- **config**: 配置类，提供自动配置功能
+- **service**: 服务类，实现分布式锁核心逻辑
 
 ### 数据源模块架构
 
