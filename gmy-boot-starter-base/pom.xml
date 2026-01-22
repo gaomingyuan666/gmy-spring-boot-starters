@@ -39,17 +39,23 @@
         </dependency>
 
         <!--    sensitive    -->
-        <dependency>
-            <groupId>com.github.houbb</groupId>
-            <artifactId>sensitive-logback</artifactId>
-            <version>1.7.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.github.houbb</groupId>-->
+<!--            <artifactId>sensitive-logback</artifactId>-->
+<!--            <version>1.7.0</version>-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <artifactId>logback-classic</artifactId>-->
+<!--                    <groupId>ch.qos.logback</groupId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+<!--        </dependency>-->
 
-        <dependency>
-            <groupId>com.github.houbb</groupId>
-            <artifactId>sensitive-core</artifactId>
-            <version>1.7.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.github.houbb</groupId>-->
+<!--            <artifactId>sensitive-core</artifactId>-->
+<!--            <version>1.7.0</version>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>com.dtflys.forest</groupId>
